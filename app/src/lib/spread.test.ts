@@ -111,6 +111,32 @@ describe("getSpread", () => {
     expect(result.nearestSpreadIndex).toBe(1);
   });
 
+  it("reports a negative Spread index, with the first Spread as nearest", () => {
+    const result = getSpread(2, -3);
+
+    expect(result.status).toBe("out-of-range");
+    if (result.status !== "out-of-range") return;
+    expect(result.nearestSpreadIndex).toBe(1);
+  });
+
+  it("reports a Spread index far past the end, with the last Spread as nearest", () => {
+    const result = getSpread(2, 9999);
+
+    expect(result.status).toBe("out-of-range");
+    if (result.status !== "out-of-range") return;
+    expect(result.totalSpreads).toBe(41);
+    expect(result.nearestSpreadIndex).toBe(41);
+  });
+
+  it("reports a Spread index that is not a number at all", () => {
+    // The route parses `/spread/abc` to NaN rather than throwing.
+    const result = getSpread(2, Number.NaN);
+
+    expect(result.status).toBe("out-of-range");
+    if (result.status !== "out-of-range") return;
+    expect(result.nearestSpreadIndex).toBe(1);
+  });
+
   it("reports a surah number outside 1 to 114", () => {
     expect(getSpread(115, 1).status).toBe("unknown-surah");
     expect(getSpread(0, 1).status).toBe("unknown-surah");
@@ -286,5 +312,71 @@ describe("listSurahs", () => {
     expect(surahs[113].nameEnglish).toBe("An-Nas");
     expect(surahs.every((surah) => surah.nameArabic.length > 0)).toBe(true);
     expect(surahs.every((surah) => surah.versesCount > 0)).toBe(true);
+  });
+});
+
+describe("getSpread navigation", () => {
+  it("turns to the next and previous Spread inside a surah", () => {
+    const result = getSpread(2, 2);
+
+    expect(result.status).toBe("ok");
+    if (result.status !== "ok") return;
+    expect(result.spread.navigation.previous).toEqual({
+      surah: 2,
+      spreadIndex: 1,
+    });
+    expect(result.spread.navigation.next).toEqual({
+      surah: 2,
+      spreadIndex: 3,
+    });
+  });
+
+  it("turns forward off the end of a surah into the next surah", () => {
+    // Al-Baqarah's last Spread is 41; the next page is Aal-Imran 1.
+    const result = getSpread(2, 41);
+
+    expect(result.status).toBe("ok");
+    if (result.status !== "ok") return;
+    expect(result.spread.navigation.next).toEqual({
+      surah: 3,
+      spreadIndex: 1,
+    });
+  });
+
+  it("turns back from the first Spread of a surah into the previous surah", () => {
+    const result = getSpread(3, 1);
+
+    expect(result.status).toBe("ok");
+    if (result.status !== "ok") return;
+    expect(result.spread.navigation.previous).toEqual({
+      surah: 2,
+      spreadIndex: 41,
+    });
+  });
+
+  it("has no previous at the first Spread of the Quran", () => {
+    const result = getSpread(1, 1);
+
+    expect(result.status).toBe("ok");
+    if (result.status !== "ok") return;
+    expect(result.spread.navigation.previous).toBeNull();
+    expect(result.spread.navigation.next).toEqual({
+      surah: 2,
+      spreadIndex: 1,
+    });
+  });
+
+  it("has no next at the last Spread of the Quran", () => {
+    // An-Nas has six ayahs, so surah 114 is a single Spread.
+    const result = getSpread(114, 1);
+
+    expect(result.status).toBe("ok");
+    if (result.status !== "ok") return;
+    expect(result.spread.totalSpreads).toBe(1);
+    expect(result.spread.navigation.next).toBeNull();
+    expect(result.spread.navigation.previous).toEqual({
+      surah: 113,
+      spreadIndex: 1,
+    });
   });
 });
