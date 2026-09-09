@@ -22,6 +22,11 @@ const nextConfig: NextConfig = {
   // Keeps `next build` tracing (and the ticket-06 standalone output) anchored
   // at the repo root now that modules are resolved from there.
   outputFileTracingRoot: repoRoot,
+  // The interview deck lives as a static file in public/slides. Nothing in
+  // the app links to it; the clean URL is the only way in.
+  async rewrites() {
+    return [{ source: "/slides", destination: "/slides/index.html" }];
+  },
 };
 
 export default nextConfig;
