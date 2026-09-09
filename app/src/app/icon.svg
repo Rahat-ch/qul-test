@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <rect width="64" height="64" rx="14" fill="#1c1917"/>
+  <!-- open book: two pages meeting at the spine -->
+  <path d="M32 18 C 26 13, 16 13, 11 16 V 48 C 16 45, 26 45, 32 50 Z" fill="#fbf9f4"/>
+  <path d="M32 18 C 38 13, 48 13, 53 16 V 48 C 48 45, 38 45, 32 50 Z" fill="#ede9e2"/>
+  <!-- spine -->
+  <path d="M32 18 V 50" stroke="#1c1917" stroke-width="2"/>
+  <!-- text lines on each page -->
+  <g stroke="#78716c" stroke-width="2" stroke-linecap="round">
+    <path d="M16 24 H 27 M16 30 H 27 M16 36 H 24"/>
+    <path d="M37 24 H 48 M37 30 H 48 M40 36 H 48"/>
+  </g>
+</svg>

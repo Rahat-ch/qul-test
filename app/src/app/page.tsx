@@ -7,7 +7,7 @@ export default function SurahIndexPage() {
 
   return (
     <main className="mx-auto w-full max-w-4xl flex-1 px-4 py-12 sm:px-6">
-      <h1 className="text-2xl font-semibold tracking-tight">QUL Reader</h1>
+      <h1 className="text-2xl font-semibold tracking-tight">Simple Quran</h1>
       <p className="mt-2 text-sm text-muted">
         All 114 surahs, read as book Spreads of seven ayahs. Text from the
         Quranic Universal Library.
