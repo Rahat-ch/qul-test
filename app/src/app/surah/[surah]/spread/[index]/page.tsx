@@ -6,6 +6,11 @@ import { ReadingPage } from "@/components/reading-page";
 import { SpreadHeader } from "@/components/spread-header";
 import { getSpread } from "@/lib/spread";
 
+/**
+ * Anything that is not a run of digits becomes NaN — `-1`, `abc`, `1.5` — and
+ * `getSpread` reports NaN as out-of-range, so every malformed index below takes
+ * the redirect branch instead of throwing.
+ */
 function parse(value: string): number {
   return /^\d+$/.test(value) ? Number(value) : Number.NaN;
 }
@@ -32,10 +37,14 @@ export default async function SpreadPage(
   }
 
   if (result.status === "out-of-range") {
-    // Ticket 04 turns this into a redirect across surah boundaries; for now the
-    // nearest valid Spread of this surah is close enough not to crash a stale
-    // link.
-    redirect(`/surah/${result.surah.number}/spread/${result.nearestSpreadIndex}`);
+    // A stale or hand-edited link lands on the nearest Spread of the surah it
+    // named, which is the closest valid page to what was asked for. Turning
+    // past a surah's end is the job of the next/previous controls, which know
+    // the neighbouring surah; a URL nobody can reach by reading should not
+    // silently move the reader into a different surah.
+    redirect(
+      `/surah/${result.surah.number}/spread/${result.nearestSpreadIndex}`,
+    );
   }
 
   const { spread } = result;
@@ -45,12 +54,16 @@ export default async function SpreadPage(
       <SpreadHeader spread={spread} />
 
       {/* Open book: Facing Page left, Reading Page right on desktop; stacked
-          with the Reading Page first on a phone. */}
+          with the Reading Page first on a phone.
+
+          `min-w-0` on each column matters: a grid item's default `min-width:
+          auto` lets a long unbroken run of text push the column past its
+          track, which shows up as horizontal scroll on the whole page. */}
       <main className="mx-auto grid w-full max-w-6xl flex-1 grid-cols-1 lg:grid-cols-2">
-        <div className="order-2 lg:order-1">
+        <div className="order-2 min-w-0 lg:order-1">
           <FacingPage content={spread.facingPage} />
         </div>
-        <div className="order-1 lg:order-2">
+        <div className="order-1 min-w-0 lg:order-2">
           <ReadingPage
             surah={spread.surah}
             content={spread.readingPage}
