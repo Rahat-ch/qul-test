@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { getSpread, listSurahs } from "./spread";
+import { getSpread, listSurahs, resolveAyahAtTime } from "./spread";
 
 describe("getSpread", () => {
   it("gives a Spread seven Reading Page rows", () => {
@@ -128,5 +128,135 @@ describe("listSurahs", () => {
     expect(surahs[113].nameEnglish).toBe("An-Nas");
     expect(surahs.every((surah) => surah.nameArabic.length > 0)).toBe(true);
     expect(surahs.every((surah) => surah.versesCount > 0)).toBe(true);
+  });
+});
+
+describe("getSpread audio descriptor", () => {
+  it("covers exactly the Spread's ayahs, in order", () => {
+    const result = getSpread(2, 2);
+
+    expect(result.status).toBe("ok");
+    if (result.status !== "ok") return;
+    expect(result.spread.audio.segments.map((segment) => segment.ayahKey)).toEqual(
+      result.spread.readingPage.rows.map((row) => row.ayahKey),
+    );
+    expect(result.spread.audio.segments.map((segment) => segment.ayahKey)).toEqual([
+      "2:8",
+      "2:9",
+      "2:10",
+      "2:11",
+      "2:12",
+      "2:13",
+      "2:14",
+    ]);
+  });
+
+  it("takes each segment's bounds from the Resource's ayah timestamps", () => {
+    const result = getSpread(2, 2);
+
+    expect(result.status).toBe("ok");
+    if (result.status !== "ok") return;
+    // 2:8 and 2:9 in data/recitation-alafasy/segments.json, milliseconds.
+    expect(result.spread.audio.segments[0]).toEqual({
+      ayahKey: "2:8",
+      startMs: 81038,
+      endMs: 92900,
+    });
+    expect(result.spread.audio.segments[1]).toEqual({
+      ayahKey: "2:9",
+      startMs: 93100,
+      endMs: 105504,
+    });
+  });
+
+  it("starts at the first ayah's segment and ends at the last ayah's segment end", () => {
+    const result = getSpread(2, 2);
+
+    expect(result.status).toBe("ok");
+    if (result.status !== "ok") return;
+    // 2:8 timestamp_from and 2:14 timestamp_to.
+    expect(result.spread.audio.startMs).toBe(81038);
+    expect(result.spread.audio.endMs).toBe(187645);
+    expect(result.spread.audio.endMs).toBe(
+      result.spread.audio.segments.at(-1)?.endMs,
+    );
+  });
+
+  it("uses the surah's own audio file and names the reciter", () => {
+    const result = getSpread(2, 1);
+
+    expect(result.status).toBe("ok");
+    if (result.status !== "ok") return;
+    expect(result.spread.audio.audioUrl).toBe(
+      "https://audio-cdn.tarteel.ai/quran/surah/alafasy/murattal/mp3/002.mp3",
+    );
+    expect(result.spread.audio.reciterName).toBe("Mishari Rashid al-`Afasy");
+  });
+});
+
+function segmentsOf(surah: number, spreadIndex: number) {
+  const result = getSpread(surah, spreadIndex);
+  if (result.status !== "ok") throw new Error("expected an in-range Spread");
+  return result.spread.audio.segments;
+}
+
+describe("resolveAyahAtTime", () => {
+  it("resolves a time inside an ayah to that ayah", () => {
+    // Spread 2 of Al-Baqarah, ayahs 2:8 to 2:14.
+    const segments = segmentsOf(2, 2);
+
+    // 2:9 runs 93100 to 105504 ms.
+    expect(resolveAyahAtTime(segments, 93100)).toBe("2:9");
+    expect(resolveAyahAtTime(segments, 99000)).toBe("2:9");
+    expect(resolveAyahAtTime(segments, 105503)).toBe("2:9");
+  });
+
+  it("gives the earlier ayah where one ends exactly as the next begins", () => {
+    // Surah Al-Haqqah: 69:1 ends at 5128 ms and 69:2 starts at 5128 ms, one of
+    // only two exactly abutting pairs in the Resource.
+    const segments = segmentsOf(69, 1);
+
+    expect(resolveAyahAtTime(segments, 5127)).toBe("69:1");
+    expect(resolveAyahAtTime(segments, 5128)).toBe("69:1");
+    expect(resolveAyahAtTime(segments, 5129)).toBe("69:2");
+  });
+
+  it("gives the earlier ayah where the next one starts before it ends", () => {
+    // Spread 29 of Al-Baqarah, ayahs 2:197 to 2:203. 2:199 starts at 4536975,
+    // 156 ms before 2:198 ends at 4537131 — one of the 30 overlaps in the
+    // Resource.
+    const segments = segmentsOf(2, 29);
+
+    expect(resolveAyahAtTime(segments, 4536974)).toBe("2:198");
+    expect(resolveAyahAtTime(segments, 4537000)).toBe("2:198");
+    expect(resolveAyahAtTime(segments, 4537131)).toBe("2:198");
+    expect(resolveAyahAtTime(segments, 4537132)).toBe("2:199");
+  });
+
+  it("holds the ayah just recited through the gap before the next one", () => {
+    // 2:8 ends at 92900 and 2:9 starts at 93100: the 200 ms gap between ayahs
+    // that the Resource uses almost everywhere.
+    const segments = segmentsOf(2, 2);
+
+    expect(resolveAyahAtTime(segments, 92901)).toBe("2:8");
+    expect(resolveAyahAtTime(segments, 93099)).toBe("2:8");
+  });
+
+  it("resolves to nothing before the first ayah of the Spread", () => {
+    // Spread 2 of Al-Baqarah opens at 81038 ms, deep into the surah audio.
+    const segments = segmentsOf(2, 2);
+
+    expect(resolveAyahAtTime(segments, 0)).toBeNull();
+    expect(resolveAyahAtTime(segments, 81037)).toBeNull();
+    expect(resolveAyahAtTime(segments, 81038)).toBe("2:8");
+  });
+
+  it("resolves to nothing after the last ayah of the Spread", () => {
+    // 2:14, the Spread's last ayah, ends at 187645 ms.
+    const segments = segmentsOf(2, 2);
+
+    expect(resolveAyahAtTime(segments, 187645)).toBe("2:14");
+    expect(resolveAyahAtTime(segments, 187646)).toBeNull();
+    expect(resolveAyahAtTime(segments, 9_999_999)).toBeNull();
   });
 });

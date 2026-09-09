@@ -51,7 +51,11 @@ export default async function SpreadPage(
           <FacingPage content={spread.facingPage} />
         </div>
         <div className="order-1 lg:order-2">
-          <ReadingPage surah={spread.surah} content={spread.readingPage} />
+          <ReadingPage
+            surah={spread.surah}
+            content={spread.readingPage}
+            audio={spread.audio}
+          />
         </div>
       </main>
     </div>
