@@ -1,18 +1,26 @@
-import type { ReadingPage as ReadingPageContent, SurahMeta } from "@/lib/spread";
+import { Recitation } from "@/components/recitation";
+import type {
+  AudioDescriptor,
+  ReadingPage as ReadingPageContent,
+  SurahMeta,
+} from "@/lib/spread";
 
 /**
  * The Reading Page of a Spread: each ayah in Indopak script with its
  * transliteration on the line directly beneath.
  *
- * Tapping a row to seek recitation, and the ayah highlight, arrive with
- * ticket 05.
+ * The surah heading and the bismillah are static, so they stay on the server.
+ * The ayah list is handed to `Recitation`, the Client Component that owns the
+ * play control, this Spread's audio element and the highlight.
  */
 export function ReadingPage({
   surah,
   content,
+  audio,
 }: {
   surah: SurahMeta;
   content: ReadingPageContent;
+  audio: AudioDescriptor;
 }) {
   return (
     <section
@@ -45,37 +53,7 @@ export function ReadingPage({
         </p>
       ) : null}
 
-      <ol className="flex flex-col gap-9">
-        {content.rows.map((row) => (
-          <li
-            key={row.ayahKey}
-            id={`ayah-${row.ayahKey}`}
-            data-ayah-key={row.ayahKey}
-            className="flex flex-col gap-3"
-          >
-            <p
-              dir="rtl"
-              lang="ar"
-              className="font-arabic text-3xl leading-[2.6] sm:text-[2.1rem] sm:leading-[2.6]"
-            >
-              {row.arabic}
-            </p>
-            <p
-              dir="ltr"
-              lang="en"
-              className="flex gap-3 text-base leading-8 text-muted"
-            >
-              <span
-                aria-label={`Ayah ${row.ayahNumber}`}
-                className="mt-1 inline-flex h-6 min-w-6 shrink-0 items-center justify-center rounded-full border border-rule px-1.5 text-xs tabular-nums"
-              >
-                {row.ayahNumber}
-              </span>
-              <span>{row.transliteration}</span>
-            </p>
-          </li>
-        ))}
-      </ol>
+      <Recitation rows={content.rows} audio={audio} />
     </section>
   );
 }
