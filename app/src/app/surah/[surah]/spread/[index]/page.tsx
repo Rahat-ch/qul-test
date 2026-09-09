@@ -6,6 +6,11 @@ import { ReadingPage } from "@/components/reading-page";
 import { SpreadHeader } from "@/components/spread-header";
 import { getSpread } from "@/lib/spread";
 
+/**
+ * Anything that is not a run of digits becomes NaN — `-1`, `abc`, `1.5` — and
+ * `getSpread` reports NaN as out-of-range, so every malformed index below takes
+ * the redirect branch instead of throwing.
+ */
 function parse(value: string): number {
   return /^\d+$/.test(value) ? Number(value) : Number.NaN;
 }
@@ -32,10 +37,14 @@ export default async function SpreadPage(
   }
 
   if (result.status === "out-of-range") {
-    // Ticket 04 turns this into a redirect across surah boundaries; for now the
-    // nearest valid Spread of this surah is close enough not to crash a stale
-    // link.
-    redirect(`/surah/${result.surah.number}/spread/${result.nearestSpreadIndex}`);
+    // A stale or hand-edited link lands on the nearest Spread of the surah it
+    // named, which is the closest valid page to what was asked for. Turning
+    // past a surah's end is the job of the next/previous controls, which know
+    // the neighbouring surah; a URL nobody can reach by reading should not
+    // silently move the reader into a different surah.
+    redirect(
+      `/surah/${result.surah.number}/spread/${result.nearestSpreadIndex}`,
+    );
   }
 
   const { spread } = result;

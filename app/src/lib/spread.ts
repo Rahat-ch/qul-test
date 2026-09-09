@@ -104,7 +104,11 @@ export type FacingPage = {
   rows: FacingPageRow[];
 };
 
-/** Filled in by ticket 04. `null` at the first and last Spread of the Quran. */
+/**
+ * Where the previous and next controls point. Turning a page runs off the end
+ * of a surah into the next one, so a target is `null` only at the two ends of
+ * the Quran: no previous at 1:1, no next at the last Spread of surah 114.
+ */
 export type SpreadNavigation = {
   previous: SpreadRef | null;
   next: SpreadRef | null;
@@ -181,6 +185,30 @@ export function listSurahs(): SurahMeta[] {
   return surahs;
 }
 
+function previousSpread(surah: number, spreadIndex: number): SpreadRef | null {
+  if (spreadIndex > 1) {
+    return { surah, spreadIndex: spreadIndex - 1 };
+  }
+  if (surah > 1) {
+    return { surah: surah - 1, spreadIndex: countSpreads(surah - 1) };
+  }
+  return null;
+}
+
+function nextSpread(
+  surah: number,
+  spreadIndex: number,
+  totalSpreads: number,
+): SpreadRef | null {
+  if (spreadIndex < totalSpreads) {
+    return { surah, spreadIndex: spreadIndex + 1 };
+  }
+  if (surah < SURAH_COUNT) {
+    return { surah: surah + 1, spreadIndex: 1 };
+  }
+  return null;
+}
+
 export function getSpread(
   surah: number,
   spreadIndex: number,
@@ -226,11 +254,14 @@ export function getSpread(
         showBismillah: meta.bismillahPre && spreadIndex === 1,
         bismillah: BISMILLAH,
       },
-      // Ticket 03 fills the Facing Page, ticket 04 the navigation targets and
-      // ticket 05 the audio descriptor. The shapes are here so the UI and the
-      // tests can be written against the finished seam.
+      // Ticket 03 fills the Facing Page and ticket 05 the audio descriptor.
+      // The shapes are here so the UI and the tests can be written against the
+      // finished seam.
       facingPage: { rows: [] },
-      navigation: { previous: null, next: null },
+      navigation: {
+        previous: previousSpread(surah, spreadIndex),
+        next: nextSpread(surah, spreadIndex, totalSpreads),
+      },
       audio: { audioUrl: null, reciterName: null, segments: [] },
     },
   };
