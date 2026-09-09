@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { getSpread, listSurahs } from "./spread";
+import { countSpreads, getSpread, listSurahs } from "./spread";
 
 describe("getSpread", () => {
   it("gives a Spread seven Reading Page rows", () => {
@@ -140,6 +140,164 @@ describe("getSpread", () => {
   it("reports a surah number outside 1 to 114", () => {
     expect(getSpread(115, 1).status).toBe("unknown-surah");
     expect(getSpread(0, 1).status).toBe("unknown-surah");
+  });
+});
+
+describe("the Facing Page of a Spread", () => {
+  const spreadsUnderTest: [string, number, number][] = [
+    ["Al-Fatihah, the only Spread", 1, 1],
+    ["Al-Baqarah, the Spread holding the grouped 2:3/2:4 tafsir", 2, 1],
+    ["Al-Baqarah, a middle Spread", 2, 20],
+    ["Al-Baqarah, the last Spread", 2, 41],
+    ["An-Nas, the last Spread of the Quran", 114, 1],
+  ];
+
+  it.each(spreadsUnderTest)(
+    "carries the same ayah keys in the same order as the Reading Page (%s)",
+    (_name, surah, spreadIndex) => {
+      const result = getSpread(surah, spreadIndex);
+
+      expect(result.status).toBe("ok");
+      if (result.status !== "ok") return;
+      const { readingPage, facingPage } = result.spread;
+      expect(facingPage.rows.map((row) => row.ayahKey)).toEqual(
+        readingPage.rows.map((row) => row.ayahKey),
+      );
+      expect(facingPage.rows.map((row) => row.ayahNumber)).toEqual(
+        readingPage.rows.map((row) => row.ayahNumber),
+      );
+    },
+  );
+});
+
+describe("Facing Page translation", () => {
+  it("gives every row a non-empty translation", () => {
+    for (const [surah, spreadIndex] of [
+      [1, 1],
+      [2, 1],
+      [2, 20],
+      [2, 41],
+      [9, 1],
+      [37, 24],
+      [114, 1],
+    ] as const) {
+      const result = getSpread(surah, spreadIndex);
+      expect(result.status).toBe("ok");
+      if (result.status !== "ok") continue;
+      for (const row of result.spread.facingPage.rows) {
+        expect(row.translation.trim(), `${row.ayahKey} translation`).not.toBe(
+          "",
+        );
+      }
+    }
+  });
+
+  it("gives the Saheeh International translation for each labelled ayah", () => {
+    const result = getSpread(1, 1);
+
+    expect(result.status).toBe("ok");
+    if (result.status !== "ok") return;
+    const rows = result.spread.facingPage.rows;
+    expect(rows[0].ayahNumber).toBe(1);
+    expect(rows[0].translation).toBe(
+      "In the name of Allāh, the Entirely Merciful, the Especially Merciful.",
+    );
+    expect(rows[4].ayahNumber).toBe(5);
+    expect(rows[4].translation).toBe(
+      "It is You we worship and You we ask for help.",
+    );
+  });
+});
+
+describe("Facing Page tafsir", () => {
+  it("gives every row a non-empty tafsir", () => {
+    for (const [surah, spreadIndex] of [
+      [1, 1],
+      [2, 1],
+      [2, 41],
+      [114, 1],
+    ] as const) {
+      const result = getSpread(surah, spreadIndex);
+      expect(result.status).toBe("ok");
+      if (result.status !== "ok") continue;
+      for (const row of result.spread.facingPage.rows) {
+        expect(row.tafsir, `${row.ayahKey} tafsir`).not.toBeNull();
+        expect(row.tafsir?.trim(), `${row.ayahKey} tafsir`).not.toBe("");
+      }
+    }
+  });
+
+  it("leaves an ayah with its own tafsir ungrouped", () => {
+    const result = getSpread(2, 1);
+
+    expect(result.status).toBe("ok");
+    if (result.status !== "ok") return;
+    const row = result.spread.facingPage.rows[1];
+    expect(row.ayahKey).toBe("2:2");
+    expect(row.tafsirGroup).toBeNull();
+  });
+
+  it("repeats a grouped tafsir on every ayah of the group, labelled with the run", () => {
+    // 2:3 in the Resource carries `ayah_keys: ["2:3", "2:4"]`; 2:4 is the bare
+    // string "2:3" pointing back at it.
+    const result = getSpread(2, 1);
+
+    expect(result.status).toBe("ok");
+    if (result.status !== "ok") return;
+    const [three, four] = result.spread.facingPage.rows.slice(2, 4);
+    expect(three.ayahKey).toBe("2:3");
+    expect(four.ayahKey).toBe("2:4");
+    expect(three.tafsir).toContain(
+      "They believe in the revelation that Allah sent down to you",
+    );
+    expect(four.tafsir).toBe(three.tafsir);
+    expect(three.tafsirGroup).toEqual({ fromAyah: 3, toAyah: 4 });
+    expect(four.tafsirGroup).toEqual({ fromAyah: 3, toAyah: 4 });
+  });
+
+  it("repeats a grouped tafsir across a Spread boundary that splits the group", () => {
+    // 37:167 covers 37:167 to 37:170, but Spread 24 ends at 37:168.
+    const first = getSpread(37, 24);
+    const second = getSpread(37, 25);
+
+    expect(first.status).toBe("ok");
+    expect(second.status).toBe("ok");
+    if (first.status !== "ok" || second.status !== "ok") return;
+    const end = first.spread.facingPage.rows.at(-1);
+    const start = second.spread.facingPage.rows[0];
+    expect(end?.ayahKey).toBe("37:168");
+    expect(start.ayahKey).toBe("37:169");
+    expect(start.tafsir).toBe(end?.tafsir);
+    expect(start.tafsirGroup).toEqual({ fromAyah: 167, toAyah: 170 });
+  });
+
+  it("strips the HTML that ten tafsir entries wrap their text in", () => {
+    // 3:3 and 3:4 are two of the ten `<p>`-wrapped entries.
+    const result = getSpread(3, 1);
+
+    expect(result.status).toBe("ok");
+    if (result.status !== "ok") return;
+    const row = result.spread.facingPage.rows[2];
+    expect(row.ayahKey).toBe("3:3");
+    expect(row.tafsir?.startsWith("He has revealed to you, O Prophet")).toBe(
+      true,
+    );
+    for (const each of result.spread.facingPage.rows) {
+      expect(each.tafsir).not.toContain("<");
+    }
+  });
+
+  it("leaves no HTML tag anywhere in the tafsir of any Spread", () => {
+    for (let surah = 1; surah <= 114; surah += 1) {
+      for (let index = 1; index <= countSpreads(surah); index += 1) {
+        const result = getSpread(surah, index);
+        if (result.status !== "ok") continue;
+        for (const row of result.spread.facingPage.rows) {
+          expect(row.tafsir ?? "", row.ayahKey).not.toMatch(/<[^>]+>/);
+          expect(row.translation, row.ayahKey).not.toMatch(/<[^>]+>/);
+        }
+      }
+    }
   });
 });
 

@@ -54,12 +54,16 @@ export default async function SpreadPage(
       <SpreadHeader spread={spread} />
 
       {/* Open book: Facing Page left, Reading Page right on desktop; stacked
-          with the Reading Page first on a phone. */}
+          with the Reading Page first on a phone.
+
+          `min-w-0` on each column matters: a grid item's default `min-width:
+          auto` lets a long unbroken run of text push the column past its
+          track, which shows up as horizontal scroll on the whole page. */}
       <main className="mx-auto grid w-full max-w-6xl flex-1 grid-cols-1 lg:grid-cols-2">
-        <div className="order-2 lg:order-1">
+        <div className="order-2 min-w-0 lg:order-1">
           <FacingPage content={spread.facingPage} />
         </div>
-        <div className="order-1 lg:order-2">
+        <div className="order-1 min-w-0 lg:order-2">
           <ReadingPage surah={spread.surah} content={spread.readingPage} />
         </div>
       </main>
