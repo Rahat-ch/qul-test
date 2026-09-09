@@ -1,0 +1,43 @@
+# Build context is the repo root, because the bundled QUL Resources in `data/`
+# live outside `app/` and are statically imported by the data layer. Everything
+# below is either regenerated in the image or has nothing to do with the build.
+#
+# `data/` is deliberately NOT ignored: without it `next build` cannot resolve
+# the JSON imports in app/src/lib/spread.ts.
+
+.git
+.gitignore
+.github
+
+# Installed and built inside the image.
+**/node_modules
+**/.next
+**/out
+**/build
+**/coverage
+**/*.tsbuildinfo
+
+# Agent and planning material, not part of the app.
+.scratch
+.claude
+.agents
+docs
+AGENTS.md
+CLAUDE.md
+**/AGENTS.md
+**/CLAUDE.md
+skills-lock.json
+
+# Docs and metadata that never affect the build output.
+LICENSE
+README.md
+Dockerfile
+.dockerignore
+
+# Local noise.
+**/.DS_Store
+**/.env*
+**/npm-debug.log*
+**/.pnpm-debug.log*
+**/*.pem
+**/.vercel

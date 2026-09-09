@@ -20,7 +20,7 @@ export async function generateMetadata(
 ): Promise<Metadata> {
   const { surah, index } = await props.params;
   const result = getSpread(parse(surah), parse(index));
-  if (result.status !== "ok") return { title: "QUL Reader" };
+  if (result.status !== "ok") return { title: "Simple Quran" };
   return {
     title: `${result.spread.surah.nameEnglish} — Spread ${result.spread.spreadIndex} of ${result.spread.totalSpreads}`,
   };

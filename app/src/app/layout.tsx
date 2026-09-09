@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import { Geist } from "next/font/google";
 import localFont from "next/font/local";
+
+import { AttributionFooter } from "@/components/attribution-footer";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -22,7 +24,8 @@ const indopakNastaleeq = localFont({
 });
 
 export const metadata: Metadata = {
-  title: "QUL Reader",
+  metadataBase: new URL("https://quran.rahatcodes.com"),
+  title: "Simple Quran",
   description:
     "A book-spread Quran reader built on Resources from the Quranic Universal Library.",
 };
@@ -33,7 +36,14 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       lang="en"
       className={`${geistSans.variable} ${indopakNastaleeq.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col">{children}</body>
+      {/* The attribution footer sits in the root layout so every route — Spread,
+          surah index, and anything added later — credits the QUL Resources
+          without each page having to remember to. `children` carries `flex-1`,
+          so the footer stays below the fold on a short page. */}
+      <body className="min-h-full flex flex-col">
+        {children}
+        <AttributionFooter />
+      </body>
     </html>
   );
 }
