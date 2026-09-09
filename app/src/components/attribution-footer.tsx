@@ -25,7 +25,7 @@ export function AttributionFooter() {
           >
             Quranic Universal Library
           </a>
-          . Not affiliated with Tarteel.
+          . An independent prototype, not a Tarteel product.
         </p>
 
         <ul className="flex flex-col gap-1">

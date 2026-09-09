@@ -6,7 +6,7 @@ it, on Resources downloaded from the [Quranic Universal Library](https://qul.tar
 produce [`docs/friction-log.md`](docs/friction-log.md), an evidence base for a
 developer-relations plan. Every place QUL slowed the build down is a row in that log.
 
-MIT licensed (see [`LICENSE`](LICENSE)). Not affiliated with Tarteel or QUL.
+MIT licensed (see [`LICENSE`](LICENSE)). An independent prototype built on the Quranic Universal Library, not a Tarteel product.
 
 ## The book-spread model
 
